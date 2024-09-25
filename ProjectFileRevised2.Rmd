@@ -1,0 +1,320 @@
+---
+title: "MAT360_FinalProject"
+author: "Kavit Patel, Eddie Cojulun"
+date: "2023-03-08"
+output: html_document
+---
+
+# LIBRARIES
+```{r}
+library(readr)
+library(explore)
+library(tidyverse)
+library(corrplot)
+```
+
+# IMPORT DATASET
+```{r message=FALSE}
+amsterdam_weekdays <- read_csv("~/OneDrive - DePaul University/FinalProject/MAT360/amsterdam_weekdays.csv")
+amsterdam_weekends <- read_csv("~/OneDrive - DePaul University/FinalProject/MAT360/amsterdam_weekends.csv")
+```
+
+Find out the dimensions of the each dataset
+```{r}
+dim(amsterdam_weekdays)
+dim(amsterdam_weekends)
+```
+
+Remove the first row from each Dataset since it is just an id number
+```{r}
+amsterdam_weekdays <- amsterdam_weekdays[,-1]
+head(amsterdam_weekdays)
+```
+
+```{r}
+amsterdam_weekends <- amsterdam_weekends[,-1]
+head(amsterdam_weekends)
+```
+
+```{r}
+amsterdam_week <- rbind(amsterdam_weekdays, amsterdam_weekends)
+write_csv(amsterdam_week, "~/OneDrive - DePaul University/FinalProject/MAT360/amsterdam_fullweek.csv")
+```
+
+```{r}
+dim(amsterdam_week)
+```
+
+```{r}
+amsterdam_week
+```
+```{r}
+names(amsterdam_week)
+```
+
+
+```{r}
+summary(amsterdam_week)
+#describe(amsterdam_week)
+```
+
+# Some Exploratory Analysis
+
+```{r}
+print(shapiro.test(amsterdam_week$realSum))
+print(summary(amsterdam_week$realSum))
+hist(amsterdam_week$realSum)
+```
+
+```{r}
+print(mean(amsterdam_week$realSum))
+print(var(amsterdam_week$realSum))
+```
+
+
+```{r}
+subSet = amsterdam_week %>%
+  filter(realSum <= 4000)
+print(summary(subSet$realSum))
+hist(subSet$realSum)
+```
+
+```{r}
+hist(amsterdam_week$person_capacity)
+hist(amsterdam_week$cleanliness_rating)
+hist(amsterdam_week$guest_satisfaction_overall)
+hist(amsterdam_week$bedrooms)
+hist(amsterdam_week$dist)
+hist(amsterdam_week$metro_dist)
+hist(amsterdam_week$attr_index_norm)
+hist(amsterdam_week$rest_index_norm)
+hist(amsterdam_week$lng)
+hist(amsterdam_week$lat)
+```
+
+
+```{r}
+ggplot(amsterdam_week, aes(x=room_type)) + 
+  geom_bar()
+ggplot(amsterdam_week, aes(x=room_shared)) + 
+  geom_bar()
+ggplot(amsterdam_week, aes(x=room_private)) + geom_bar()
+ggplot(amsterdam_week, aes(x=host_is_superhost)) + geom_bar()
+ggplot(amsterdam_week, aes(x=multi)) + geom_bar()
+ggplot(amsterdam_week, aes(x=biz)) + geom_bar()
+ggplot(amsterdam_week, aes(x=bedrooms)) + geom_bar()
+```
+
+```{r}
+ggplot(data=amsterdam_week, aes(x=room_type, y=realSum, fill = room_type)) + geom_bar(stat="identity")
+ggplot(data=amsterdam_week, aes(x=bedrooms, y=realSum, fill = bedrooms)) + geom_bar(stat="identity")
+ggplot(data=amsterdam_week, aes(x=multi, y=realSum, fill = host_is_superhost)) + geom_bar(stat="identity")
+```
+
+```{r}
+names(amsterdam_week)
+```
+
+
+```{r}
+#Creating a correlation matrix with just the numerical variables and only the normalized versions of attraction and resturaunt indexes
+numerics <- amsterdam_week[, c(1, 5, 9:13, 15, 17:19)]
+matrix.corr = cor(numerics)
+```
+
+
+```{r}
+print(matrix.corr)
+corrplot(matrix.corr)
+```
+
+
+###### START THE ANALYSIS
+#Linear Regression
+
+```{r}
+#Taking 
+print(dim(amsterdam_week))
+print(dim(subSet))
+```
+
+```{r}
+reg1.1 <- lm(realSum ~ ., data = amsterdam_week)
+reg1.2 <- lm(realSum ~ ., data = subSet)
+```
+
+```{r}
+summary(reg1.1)
+```
+
+```{r}
+summary(reg1.2)
+```
+
+```{r}
+print(logLik(reg1.1))
+AIC(reg1.1)
+BIC(reg1.1)
+print(logLik(reg1.2))
+AIC(reg1.2)
+BIC(reg1.2)
+```
+
+```{r}
+res <- resid(reg1.2)
+plot(fitted(reg1.2), res)
+```
+
+#Multi-Linear Regress (Transforming sumReal)
+
+```{r}
+y = log(amsterdam_week$realSum)
+yy = log(subSet$realSum)
+```
+
+```{r}
+print(shapiro.test(y))
+print(shapiro.test(yy))
+hist(y)
+hist(yy)
+```
+
+```{r}
+reg2.1 <- lm(y ~ .-realSum, data = amsterdam_week)
+reg2.2 <- lm(yy ~ .-realSum, data = subSet)
+```
+
+```{r}
+summary(reg2.1)
+summary(reg2.2)
+```
+
+```{r}
+print(logLik(reg2.1))
+AIC(reg2.1)
+BIC(reg2.1)
+print(logLik(reg2.2))
+AIC(reg2.2)
+BIC(reg2.2)
+```
+
+```{r}
+#Percent Change if room_type = Private room
+(exp(-3.708e-01) - 1) * (100)
+#Percent Change if room_type = Shared room
+(exp(-6.091e-01) - 1) * (100)
+#Percent Change for every increase in person capacity
+(exp( 1.736e-01) - 1) * (100)
+#Percent Change if the listing belongs to a host with 2-4 offers
+(exp(-3.906e-02) - 1) * (100)
+#Percent Change for every unit increase in guest satisfaction
+(exp(3.544e-03) - 1) * (100)
+#Percent Change for every one increase in bedrooms
+(exp(1.427e-01) - 1) * (100)
+#Percent Change for every km increase in distance from City's center
+(exp(-6.243e-02) - 1) * (100)
+#Percent Change for every unit increase in restaurant index of location
+(exp(1.507e-02) - 1) * (100)
+#Percent Change for every unit increase in longitude 
+(exp(3.384e-01) - 1) * (100)
+#Percent Change for every unit increase in latitude
+(exp(-2.378e+00) - 1) * (100)
+```
+
+```{r}
+plot(reg2.1)
+plot(reg2.2)
+```
+
+#Gamma GML
+
+```{r}
+#Taking 
+print(dim(amsterdam_week))
+print(dim(subSet))
+```
+
+```{r}
+gamma1.1 <- glm(realSum ~ .,family=Gamma(link="log"), data=amsterdam_week)
+gamma1.2 <- glm(realSum ~ .,family=Gamma(link="log"), data=subSet)
+```
+
+```{r}
+summary(gamma1.1)
+```
+```{r}
+summary(gamma1.2)
+```
+
+```{r}
+#Percent Change if room_type = Private room
+(exp(-3.777e-01) - 1) * (100)
+#Percent Change if room_type = Shared room
+(exp(-6.126e-01) - 1) * (100)
+#Percent Change for every increase in person capacity
+(exp(1.715e-01) - 1) * (100)
+#Percent Change if the listing belongs to a host with 2-4 offers
+(exp(-4.204e-02) - 1) * (100)
+#Percent Change for every one increase in bedrooms
+(exp(1.526e-01) - 1) * (100)
+#Percent Change for every km increase in distance from City's center
+(exp(-6.330e-02) - 1) * (100)
+#Percent Change for every unit increase in restaurant index of location
+(exp(1.443e-02) - 1) * (100)
+#Percent Change for every unit increase in latitude
+(exp(-1.893e+00) - 1) * (100)
+```
+
+```{r}
+print(logLik(gamma1.1))
+AIC(gamma1.1)
+BIC(gamma1.1)
+print(logLik(gamma1.2))
+AIC(gamma1.2)
+BIC(gamma1.2)
+```
+
+```{r}
+plot(gamma1.1)
+plot(gamma1.2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# THE END
+
+
+
+
+
+
